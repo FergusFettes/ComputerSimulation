@@ -1,27 +1,30 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
 
-const float B = 0.3;
-const int L = 10;
+const int B = 0.5;
+const int L = 32;
 const int D = 2;
+
+using namespace std;
 
 inline int pp(int in) { int out = (in + 1) % L;  return out;}
 inline int pm(int in) { int out = (in + L - 1) % L;  return out;}
 
-using namespace std;
+void write_out(vector<double> *h);
 
 class lattice {
  public:
-  lattice(int x) :length(x), dimension(D), p8(exp(-8 * B)), p4(exp(-4 * B))
+  lattice(int x, float y) :length(x), beta(y), dimension(D), p8(exp(-8 * beta)), p4(exp(-4 * beta))
     {
+    srand (time(NULL));
     this->reset();
     }
 
-  void reset()
-    {
+  void reset(){
     plane.resize(length);
     for(int i = 0; i < length; ++i)
         plane[i].resize(length);
@@ -31,21 +34,16 @@ class lattice {
         plane[i][j] = true;
     }
 
-  void display()
-    {
-    for(unsigned int i = 0; i < plane.size(); ++i)
-        {for(unsigned int j = 0; j < plane.size(); ++j)
-            {cout << plane[i][j];}
+  void display(){
+    for(unsigned int i = 0; i < plane.size(); ++i){
+        for(unsigned int j = 0; j < plane.size(); ++j)
+            cout << plane[i][j];
         cout << endl;
         }
     }
 
-  void metropolis_update(int mlty = 1)
-    {
-    srand (time(NULL));
-
-    while(mlty>0)
-        {
+  void metropolis_update(int mlty = 1){
+    while(mlty>0){
         --mlty;
         double l = length; double d = dimension;
         double num = pow(l, d); int n = num;
@@ -62,9 +60,8 @@ class lattice {
         if (nnsum1 >= nnsum2)
          continue;
 
-        double rnd = rand() % 100; rnd /= rnd;
-        switch(nnsum2 - nnsum1)
-         {
+        double rnd = rand() % 100; rnd /= 100;
+        switch(nnsum2 - nnsum1){
          case 8:
           if (rnd < p8)
            continue;
@@ -77,8 +74,7 @@ class lattice {
         }
     }
 
-  int neighbors(int spin)
-    {
+  int neighbors(int spin){
     int r = (int)spin/length;                     //get row
     int c = spin % length;                        //and col
 
@@ -90,14 +86,11 @@ class lattice {
     return temp;
     }
 
-
-  int energy()
-    {
+  int energy(){
     int temp = 0;
 
     for(int i = 0; i < plane.size(); ++i)
-    for(int j = 0; j < plane.size(); ++j)
-        {
+    for(int j = 0; j < plane.size(); ++j){
         temp += plane[i][j]==plane[ i     ][ pp(j) ] ? 1 : -1;
         temp += plane[i][j]==plane[ pp(i) ][ j     ] ? 1 : -1;
         }
@@ -107,13 +100,11 @@ class lattice {
     }
   int energy_saved() {return erg;}
 
-  int magnetism()
-    {
+  int magnetism(){
     int temp = 0;
 
     for(int i = 0; i < plane.size(); ++i)
-    for(int j = 0; j < plane.size(); ++j)
-        {
+    for(int j = 0; j < plane.size(); ++j){
         temp += plane[i][j] ? 1 : -1;
         }
 
@@ -122,14 +113,75 @@ class lattice {
     }
   int magnetism_saved() {return mag;}
 
+  void repetition(int rep, int l, bool m, bool e){
+    if (e){energys.clear(); energys.resize(l);}
+    if (m){magnets.clear(); magnets.resize(l);}
+
+    for (int j = 0; j < rep; j++){
+        this->reset();
+        for (int i = 0; i < l; i++){
+            this->metropolis_update();
+            if (e) {energys[i] += energy();}
+            if (m) {energys[i] += magnetism();}
+            }
+        }
+
+    if (e){
+    for (int i = 0; i < l; i++)
+        energys[i] /= rep;
+        }
+
+    if (m){
+    for (int i = 0; i < l; i++)
+        magnets[i] /= rep;
+        }
+
+    }
+
+  void jacknife(int skip, int seg, int n, bool m, bool e){
+    if (e){energys.clear(); energys.resize(seg);}
+    if (m){magnets.clear(); magnets.resize(seg);}
+    this->reset();
+    this->metropolis_update(skip);
+
+    for(int j = 0; j < n; j++)
+    for(int i = 0; i < seg; i++){
+        this->metropolis_update();
+        if (e) {energys[i] += energy();}
+        if (m) {energys[i] += magnetism();}
+        }
+
+    if (e){
+    for (int i = 0; i < seg; i++)
+        energys[i] /= n;
+        }
+
+    if (m){
+    for (int i = 0; i < seg; i++)
+        magnets[i] /= n;
+        }
+
+    }
+
+  vector<double> *energys_out(){
+    return &energys;
+    }
+
+  vector<double> *magnets_out(){
+    return &magnets;
+    }
+
 
  protected:
   vector<vector<bool> > plane;
 
   const double p8, p4;
   const int dimension, length;
+  const double beta;
 
   int erg, mag;
+  vector<double> energys;
+  vector<double> magnets;
 
 };
 
@@ -138,15 +190,23 @@ int main()
 {
     cout << "Hello world!" << endl;
 
-    lattice lll(23);
-    cout << lll.energy() << endl;
-    cout << lll.magnetism() << endl;
-    lll.metropolis_update(10000);
-    cout << lll.energy() << endl;
-    cout << lll.magnetism() << endl;
-    lll.display();
-    lll.reset();
-    lll.display();
+    lattice l(L,B);
+    l.jacknife(2000, 5000, 50, 0, 1);
+//    l.repetition(50, 10000, 0, 1);
+    vector<double> *h = l.energys_out();
+    l.display();
+
+    write_out(h);
 
     return 0;
+}
+
+
+void write_out(vector<double> *h)
+{
+    fstream mystream;
+    mystream.open ("/home/fergus/Data/data.txt", fstream::out | fstream::trunc );
+    for (int i = 0; i < (*h).size(); i++)
+        mystream << (*h)[i] << endl;
+    mystream.close();
 }

@@ -2,8 +2,9 @@
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
-const int B = 1;
+const float B = 0.3;
 const int L = 10;
 const int D = 2;
 
@@ -34,55 +35,89 @@ class lattice {
 
   void display()
     {
-    for(int i = 0; i < plane.size(); ++i)
-        {for(int j = 0; j < plane.size(); ++j)
+    for(unsigned int i = 0; i < plane.size(); ++i)
+        {for(unsigned int j = 0; j < plane.size(); ++j)
             {cout << plane[i][j];}
         cout << endl;
         }
     }
 
-  void metropolis_update()
+  void metropolis_update(int mlty = 1)
     {
+    srand (time(NULL));
 
-    double l = length; double d = dimension;
-    double num = pow(l, d); int n = num;
+    while(mlty>0)
+        {
+        --mlty;
+        double l = length; double d = dimension;
+        double num = pow(l, d); int n = num;
 
-    int choice = rand() % n;   //choose spin
-    int r = (int)choice/length;                     //get row
-    int c = choice % length;                        //and col
+        int choice = rand() % n;   //choose spin
+        int r = (int)choice/length;                     //get row
+        int c = choice % length;                        //and col
 
-    int nnsum1 = 0;
-    nnsum1 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
-    nnsum1 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
-    nnsum1 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
-    nnsum1 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
+        int nnsum1 = 0;
+        nnsum1 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
+        nnsum1 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
+        nnsum1 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
+        nnsum1 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
 
-    plane[r][c] = !plane[r][c];                      //flip!
+        plane[r][c] = !plane[r][c];                      //flip!
 
-    int nnsum2 = 0;
-    nnsum2 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
-    nnsum2 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
-    nnsum2 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
-    nnsum2 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
+        int nnsum2 = 0;
+        nnsum2 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
+        nnsum2 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
+        nnsum2 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
+        nnsum2 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
 
-    if (nnsum1 >= nnsum2)
-     return;
+        if (nnsum1 >= nnsum2)
+         continue;
 
-    double rnd = rand() % 100; rnd /= rnd;
-    switch(nnsum2 - nnsum1)
-     {
-     case 8:
-      if (rnd < p8)
-       return;
-     case 4:
-      if (rnd < p4)
-       return;
-     }
+        double rnd = rand() % 100; rnd /= rnd;
+        switch(nnsum2 - nnsum1)
+         {
+         case 8:
+          if (rnd < p8)
+           continue;
+         case 4:
+          if (rnd < p4)
+           continue;
+         }
 
-    plane[r][c] = !plane[r][c];                      //flip!
-
+        plane[r][c] = !plane[r][c];                      //flip!
+        }
     }
 
+  int energy()
+    {
+    int temp = 0;
+
+    for(int i = 0; i < plane.size(); ++i)
+    for(int j = 0; j < plane.size(); ++j)
+        {
+        temp += plane[i][j]==plane[ i     ][ pp(j) ] ? 1 : -1;
+        temp += plane[i][j]==plane[ pp(i) ][ j     ] ? 1 : -1;
+        }
+
+    erg = temp;
+    return erg;
+    }
+  int energy_saved() {return erg;}
+
+  int magnetism()
+    {
+    int temp = 0;
+
+    for(int i = 0; i < plane.size(); ++i)
+    for(int j = 0; j < plane.size(); ++j)
+        {
+        temp += plane[i][j] ? 1 : -1;
+        }
+
+    mag = temp;
+    return mag;
+    }
+  int magnetism_saved() {return mag;}
 
  protected:
   vector<vector<bool> > plane;
@@ -90,6 +125,7 @@ class lattice {
   double p8, p4;
 
   int dimension, length;
+  int erg, mag;
 
 };
 
@@ -97,10 +133,14 @@ class lattice {
 int main()
 {
     cout << "Hello world!" << endl;
-    lattice mylat(L);
 
-    mylat.metropolis_update();
-    mylat.display();
+    lattice lll(23);
+    cout << lll.energy() << endl;
+    cout << lll.magnetism() << endl;
+    lll.metropolis_update(10000);
+    cout << lll.energy() << endl;
+    cout << lll.magnetism() << endl;
+    lll.display();
 
     return 0;
 }

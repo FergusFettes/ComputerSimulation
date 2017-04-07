@@ -15,11 +15,13 @@ using namespace std;
 
 class lattice {
  public:
-  lattice(int ll)
+  lattice(int x) :length(x), dimension(D), p8(exp(-8 * B)), p4(exp(-4 * B))
     {
-    dimension = D;
-    length = ll;
+    this->reset();
+    }
 
+  void reset()
+    {
     plane.resize(length);
     for(int i = 0; i < length; ++i)
         plane[i].resize(length);
@@ -27,10 +29,6 @@ class lattice {
     for(int i = 0; i < length; ++i)
     for(int j = 0; j < length; ++j)
         plane[i][j] = true;
-
-    p8 = exp(-8 * B);
-    p4 = exp(-4 * B);
-
     }
 
   void display()
@@ -53,22 +51,13 @@ class lattice {
         double num = pow(l, d); int n = num;
 
         int choice = rand() % n;   //choose spin
+        int nnsum1 = this->neighbors(choice);
+
         int r = (int)choice/length;                     //get row
         int c = choice % length;                        //and col
-
-        int nnsum1 = 0;
-        nnsum1 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
-        nnsum1 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
-        nnsum1 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
-        nnsum1 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
-
         plane[r][c] = !plane[r][c];                      //flip!
 
-        int nnsum2 = 0;
-        nnsum2 += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
-        nnsum2 += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
-        nnsum2 += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
-        nnsum2 += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
+        int nnsum2 = this->neighbors(choice);
 
         if (nnsum1 >= nnsum2)
          continue;
@@ -87,6 +76,20 @@ class lattice {
         plane[r][c] = !plane[r][c];                      //flip!
         }
     }
+
+  int neighbors(int spin)
+    {
+    int r = (int)spin/length;                     //get row
+    int c = spin % length;                        //and col
+
+    int temp = 0;
+    temp += plane[r][c]==plane[ r     ][ pp(c) ] ? 1 : -1;
+    temp += plane[r][c]==plane[ r     ][ pm(c) ] ? 1 : -1;
+    temp += plane[r][c]==plane[ pp(r) ][ c     ] ? 1 : -1;
+    temp += plane[r][c]==plane[ pm(r) ][ c     ] ? 1 : -1;
+    return temp;
+    }
+
 
   int energy()
     {
@@ -119,12 +122,13 @@ class lattice {
     }
   int magnetism_saved() {return mag;}
 
+
  protected:
   vector<vector<bool> > plane;
 
-  double p8, p4;
+  const double p8, p4;
+  const int dimension, length;
 
-  int dimension, length;
   int erg, mag;
 
 };
@@ -140,6 +144,8 @@ int main()
     lll.metropolis_update(10000);
     cout << lll.energy() << endl;
     cout << lll.magnetism() << endl;
+    lll.display();
+    lll.reset();
     lll.display();
 
     return 0;
